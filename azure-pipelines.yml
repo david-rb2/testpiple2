@@ -1,0 +1,72 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+    exclude:
+      - refactor/*
+      - bugfix/*
+  paths:
+    include:
+      - "*"
+    exclude:
+      - "docs/*"
+      - README.md
+
+pr:
+  autoCancel: true
+  paths:
+    include:
+      - "*"
+    exclude:
+      - "docs/*"
+      - README.md
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  solution: "**/*.sln"
+  buildPlatform: "Any CPU"
+  buildConfiguration: "Release"
+  deployState: "Active"
+
+stages:
+  - stage: build
+    displayName: Build
+    jobs:
+      - job: build_backend
+        displayName: "Build backend"
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: "sdk"
+              version: "3.1.201"
+
+          - task: NuGetToolInstaller@1
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: "*.csproj"
+              arguments: "--configuration $(buildConfiguration)"
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish Web Api application
+            inputs:
+              command: publish
+              publishWebProjects: false
+              projects: "*.csproj"
+              arguments: "-o api2/publish --configuration $(buildConfiguration)"
+              modifyOutputPath: false
+              zipAfterPublish: false
+
+
+          - publish: $(System.DefaultWorkingDirectory)/api2/publish
+            artifact: ApiPackage2
